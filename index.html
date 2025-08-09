@@ -1,0 +1,225 @@
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    as="style"
+    onload="this.rel='stylesheet'"
+    href="https://fonts.googleapis.com/css2?display=swap&family=Noto+Sans:wght@400;500;700;900&family=Space+Grotesk:wght@400;500;700"
+  />
+  <title>Real Compass</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hidden { display: none; }
+    .active-tab { color: white !important; }
+    .inactive-tab { color: #93acc8 !important; }
+  </style>
+</head>
+<body class="bg-[#111922] text-white" style='font-family: "Space Grotesk", "Noto Sans", sans-serif;'>
+
+<div class="flex flex-col min-h-screen">
+
+  <!-- Compass Screen -->
+  <div id="compass-screen" class="flex flex-col flex-1 items-center justify-center">
+    <h1 id="heading" class="text-[32px] font-bold">0°</h1>
+    <p id="direction" class="mb-4">N</p>
+
+    <!-- SVG Compass -->
+    <svg id="compass-svg" viewBox="0 0 200 200" class="w-64 h-64">
+      <circle cx="100" cy="100" r="95" stroke="#93acc8" stroke-width="3" fill="#0b141d"/>
+      <text x="100" y="20" text-anchor="middle" font-size="16" fill="white">N</text>
+      <text x="180" y="105" text-anchor="middle" font-size="16" fill="white">E</text>
+      <text x="100" y="190" text-anchor="middle" font-size="16" fill="white">S</text>
+      <text x="20" y="105" text-anchor="middle" font-size="16" fill="white">W</text>
+      <g id="needle" transform="rotate(0, 100, 100)">
+        <polygon points="100,30 95,100 105,100" fill="red"/>
+        <polygon points="100,170 95,100 105,100" fill="white"/>
+        <circle cx="100" cy="100" r="4" fill="white"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- GPS Screen -->
+  <div id="gps-screen" class="hidden flex flex-col flex-1 items-center justify-center px-4">
+
+    <div class="grid grid-cols-2 gap-4 w-full max-w-md">
+      <!-- Latitude -->
+      <div class="bg-[#1a2532] p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-400">Latitude</p>
+        <p id="lat" class="text-xl font-bold">--</p>
+      </div>
+
+      <!-- Longitude -->
+      <div class="bg-[#1a2532] p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-400">Longitude</p>
+        <p id="lon" class="text-xl font-bold">--</p>
+      </div>
+
+      <!-- Elevation -->
+      <div class="bg-[#1a2532] p-4 rounded-xl shadow col-span-2 flex justify-between">
+        <div>
+          <p class="text-sm text-gray-400">Elevation</p>
+          <p id="elevation-m" class="text-lg font-bold">-- m</p>
+        </div>
+        <div class="text-right">
+          <p class="text-sm text-gray-400">&nbsp;</p>
+          <p id="elevation-ft" class="text-lg font-bold">-- ft</p>
+        </div>
+      </div>
+
+      <!-- Sunrise -->
+      <div class="bg-[#1a2532] p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-400">Sunrise</p>
+        <p id="sunrise" class="text-lg font-bold">--</p>
+      </div>
+
+      <!-- Sunset -->
+      <div class="bg-[#1a2532] p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-400">Sunset</p>
+        <p id="sunset" class="text-lg font-bold">--</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="flex gap-2 border-t border-[#243447] bg-[#1a2532] px-4 pb-3 pt-2">
+    <button id="nav-compass" class="flex flex-1 flex-col items-center active-tab">
+      <span>🧭</span>
+      <span class="text-sm">Compass</span>
+    </button>
+    <button id="nav-gps" class="flex flex-1 flex-col items-center inactive-tab">
+      <span>📍</span>
+      <span class="text-sm">GPS</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  const headingEl = document.getElementById("heading");
+  const directionEl = document.getElementById("direction");
+  const needleEl = document.getElementById("needle");
+  const latEl = document.getElementById("lat");
+  const lonEl = document.getElementById("lon");
+  const elevMEl = document.getElementById("elevation-m");
+  const elevFtEl = document.getElementById("elevation-ft");
+  const sunriseEl = document.getElementById("sunrise");
+  const sunsetEl = document.getElementById("sunset");
+
+  function getCardinal(angle) {
+    const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+    return dirs[Math.round(angle / 45) % 8];
+  }
+
+  function updateCompass(heading) {
+    headingEl.textContent = `${Math.round(heading)}°`;
+    directionEl.textContent = getCardinal(heading);
+    needleEl.setAttribute("transform", `rotate(${heading}, 100, 100)`);
+  }
+
+  function handleOrientation(event) {
+    let heading = event.alpha;
+    if (typeof event.webkitCompassHeading !== "undefined") {
+      heading = event.webkitCompassHeading; // iOS
+    } else {
+      heading = 360 - heading; // Android
+    }
+    if (!isNaN(heading)) updateCompass(heading);
+  }
+
+  function initCompass() {
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      DeviceOrientationEvent.requestPermission().then(state => {
+        if (state === "granted") {
+          window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+        }
+      });
+    } else {
+      window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+    }
+  }
+  initCompass();
+
+  function fetchElevation(lat, lon) {
+    fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.results && data.results.length > 0) {
+          const meters = data.results[0].elevation;
+          elevMEl.textContent = `${meters} m`;
+          elevFtEl.textContent = `${(meters * 3.28084).toFixed(1)} ft`;
+        }
+      })
+      .catch(() => {
+        elevMEl.textContent = "Err";
+        elevFtEl.textContent = "Err";
+      });
+  }
+
+  function fetchSunTimes(lat, lon) {
+    fetch(`https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === "OK") {
+          const sunrise = new Date(data.results.sunrise);
+          const sunset = new Date(data.results.sunset);
+          sunriseEl.textContent = sunrise.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          sunsetEl.textContent = sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+      })
+      .catch(() => {
+        sunriseEl.textContent = "Err";
+        sunsetEl.textContent = "Err";
+      });
+  }
+
+  function updateGPS() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.watchPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        latEl.textContent = lat.toFixed(6);
+        lonEl.textContent = lon.toFixed(6);
+        fetchElevation(lat, lon);
+        fetchSunTimes(lat, lon);
+      }, err => {
+        latEl.textContent = "Error";
+        lonEl.textContent = err.message;
+      });
+    } else {
+      latEl.textContent = "Not supported";
+      lonEl.textContent = "Not supported";
+    }
+  }
+  updateGPS();
+
+  const compassScreen = document.getElementById("compass-screen");
+  const gpsScreen = document.getElementById("gps-screen");
+  const navCompass = document.getElementById("nav-compass");
+  const navGPS = document.getElementById("nav-gps");
+
+  function setActive(tab) {
+    if (tab === "compass") {
+      compassScreen.classList.remove("hidden");
+      gpsScreen.classList.add("hidden");
+      navCompass.classList.add("active-tab");
+      navCompass.classList.remove("inactive-tab");
+      navGPS.classList.remove("active-tab");
+      navGPS.classList.add("inactive-tab");
+    } else {
+      gpsScreen.classList.remove("hidden");
+      compassScreen.classList.add("hidden");
+      navGPS.classList.add("active-tab");
+      navGPS.classList.remove("inactive-tab");
+      navCompass.classList.remove("active-tab");
+      navCompass.classList.add("inactive-tab");
+    }
+  }
+
+  navCompass.addEventListener("click", () => setActive("compass"));
+  navGPS.addEventListener("click", () => setActive("gps"));
+</script>
+
+</body>
+</html>
