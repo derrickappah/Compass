@@ -5,6 +5,13 @@ Designed with **Tailwind CSS** and optimized for phones.
 
 ---
 
+
+## 📸 Screenshots
+
+![Compass Screen](assets/compass-screen.jpg)
+![GPS Screen](assets/gps-screen.jpg)
+
+---
 ## 🚀 Features
 - 🧭 **Live Compass** (works with device orientation sensors)
 - 📍 **GPS Coordinates** (Latitude & Longitude)
